@@ -1,0 +1,6 @@
+{
+  "name": "ATS Resume Checker",
+  "description": "Analyze your resume ATS compatibility, retrieve keyword and formatting insights, and generate printable PDF reports aligned with target job descriptions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

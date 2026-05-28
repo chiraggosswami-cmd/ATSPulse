@@ -1,0 +1,83 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Top-Level Catch-All Default Deny Safe Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Global Secure Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    function isValidAnalysisResponse(report) {
+      return report.keys().hasAll([
+        'atsScore', 'atsTier', 'roleAlignment', 'matchedKeywords',
+        'missingKeywords', 'formattingScore', 'formattingIssues',
+        'formattingTips', 'contentRecommendations', 'keywordTips',
+        'alignmentSummary'
+      ]) &&
+      (report.atsScore is int || report.atsScore is float) &&
+      report.atsScore >= 0 && report.atsScore <= 100 &&
+      (report.formattingScore is int || report.formattingScore is float) &&
+      report.formattingScore >= 0 && report.formattingScore <= 100 &&
+      report.atsTier is string && report.atsTier.size() <= 100 &&
+      report.roleAlignment is string && report.roleAlignment.size() <= 200 &&
+      report.alignmentSummary is string && report.alignmentSummary.size() <= 5000 &&
+      report.matchedKeywords is list &&
+      report.missingKeywords is list &&
+      report.formattingIssues is list &&
+      report.formattingTips is list &&
+      report.contentRecommendations is list &&
+      report.keywordTips is list;
+    }
+
+    function isValidHistoryItem(data, historyId, userId) {
+      return data.keys().hasAll([
+        'id', 'timestamp', 'fileName', 'targetRole', 'atsScore', 'report', 'userId'
+      ]) &&
+      data.keys().size() == 7 &&
+      data.id is string && data.id == historyId &&
+      data.timestamp is string && data.timestamp.size() <= 64 &&
+      data.fileName is string && data.fileName.size() >= 1 && data.fileName.size() <= 200 &&
+      data.targetRole is string && data.targetRole.size() <= 200 &&
+      (data.atsScore is int || data.atsScore is float) &&
+      data.atsScore >= 0 && data.atsScore <= 100 &&
+      data.userId == userId &&
+      data.report is map &&
+      isValidAnalysisResponse(data.report);
+    }
+
+    // Match path for User Historical Scans
+    match /users/{userId}/history/{historyId} {
+      allow list, get: if isOwner(userId);
+      allow create: if isOwner(userId) &&
+                       isVerifiedUser() &&
+                       isValidId(historyId) &&
+                       isValidHistoryItem(incoming(), historyId, userId);
+      allow update: if false; // Scanned reports are write-once historical assets
+      allow delete: if isOwner(userId);
+    }
+  }
+}

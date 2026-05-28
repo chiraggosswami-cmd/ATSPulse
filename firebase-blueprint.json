@@ -1,0 +1,102 @@
+{
+  "entities": {
+    "FormattingIssue": {
+      "title": "FormattingIssue",
+      "description": "A layout or formatting issue flagged during ATS parsing",
+      "type": "object",
+      "properties": {
+        "issue": { "type": "string", "description": "The description of the issue" },
+        "severity": { "type": "string", "enum": ["Critical", "Suggestion"], "description": "The severity classification of the formatting issue" },
+        "details": { "type": "string", "description": "Detailed remedy guidance and explanation" }
+      },
+      "required": ["issue", "severity", "details"]
+    },
+    "ContentRecommendation": {
+      "title": "ContentRecommendation",
+      "description": "Content-specific recommendation to improve candidate experience alignment",
+      "type": "object",
+      "properties": {
+        "section": { "type": "string", "description": "The resume section this recommendation pertains to" },
+        "recommendation": { "type": "string", "description": "Corrective phrasing or context to insert" },
+        "impact": { "type": "string", "enum": ["High", "Medium", "Low"], "description": "Predicted impact of making this fix on keyword indexing algorithms" }
+      },
+      "required": ["section", "recommendation", "impact"]
+    },
+    "AnalysisResponse": {
+      "title": "AnalysisResponse",
+      "description": "Full compiler outcome payload representing the optimized matching score",
+      "type": "object",
+      "properties": {
+        "atsScore": { "type": "number", "description": "Numeric ATS matching score between 0 and 100" },
+        "atsTier": { "type": "string", "description": "Verbal tier matching (e.g. Strong Match, Weak Match)" },
+        "roleAlignment": { "type": "string", "description": "Parsed candidate focus role or title analyzed" },
+        "matchedKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Keywords extracted successfully from the candidate text"
+        },
+        "missingKeywords": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Required target job keywords not detected in candidate text"
+        },
+        "formattingScore": { "type": "number", "description": "Score from 0 to 100 for document structure and layout parsing safety" },
+        "formattingIssues": {
+          "type": "array",
+          "items": { "$ref": "FormattingIssue" },
+          "description": "Layout violations or non-standard characters found"
+        },
+        "formattingTips": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "High-level guidelines for cleaning document margins and structures"
+        },
+        "contentRecommendations": {
+          "type": "array",
+          "items": { "$ref": "ContentRecommendation" },
+          "description": "Specific resume upgrades to improve candidate narrative impact"
+        },
+        "keywordTips": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "Integration tips to add missing keywords organically"
+        },
+        "alignmentSummary": { "type": "string", "description": "A descriptive executive recruiter review of candidate alignment" }
+      },
+      "required": [
+        "atsScore",
+        "atsTier",
+        "roleAlignment",
+        "matchedKeywords",
+        "missingKeywords",
+        "formattingScore",
+        "formattingIssues",
+        "formattingTips",
+        "contentRecommendations",
+        "keywordTips",
+        "alignmentSummary"
+      ]
+    },
+    "AnalysisHistoryItem": {
+      "title": "AnalysisHistoryItem",
+      "description": "A single resume audit log item stored inside a history timeline",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Unique historical item identifier mapping" },
+        "timestamp": { "type": "string", "format": "date-time", "description": "ISO timestamp indicating when this analysis was completed" },
+        "fileName": { "type": "string", "description": "The parsed document identity name" },
+        "targetRole": { "type": "string", "description": "Role aligning parsed resume document to industry" },
+        "atsScore": { "type": "number", "description": "Main score mapped in audit indexing" },
+        "report": { "$ref": "AnalysisResponse", "description": "The detailed audit feedback response from Gemini model" },
+        "userId": { "type": "string", "description": "The owner user ID who compiled the report" }
+      },
+      "required": ["id", "timestamp", "fileName", "targetRole", "atsScore", "report", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/history/{historyId}": {
+      "schema": "AnalysisHistoryItem",
+      "description": "Secure subcollection syncing a user's unique resume audit history item records"
+    }
+  }
+}
